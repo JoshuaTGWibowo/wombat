@@ -24,14 +24,12 @@ import {
 } from '@mui/icons-material';
 import { useAppSelector } from '../../../app/hooks';
 import { sliceCache } from '../services/sliceCache';
-import HeightMapLegend from './HeightMapLegend';
 import MeniscusVisualization from './MeniscusVisualization';
 
 interface VirtualizedSliceViewerProps {
   onSliceSelect?: (index: number) => void;
   showMetadata?: boolean;
   showMeniscus?: boolean;
-  showLegend?: boolean;
   maxCacheSize?: number;
 }
 
@@ -47,12 +45,10 @@ export default function VirtualizedSliceViewer({
   onSliceSelect,
   showMetadata = true,
   showMeniscus = true,
-  showLegend = true,
   maxCacheSize = 50,
 }: VirtualizedSliceViewerProps) {
   const slices = useAppSelector((state) => state.slicing.slices);
   const convexMetadata = useAppSelector((state) => state.slicing.convexMetadata);
-  const showHeightMap = useAppSelector((state) => state.slicing.showHeightMap);
   const slicingMode = useAppSelector((state) => state.slicing.slicingMode);
   const status = useAppSelector((state) => state.slicing.status);
 
@@ -438,11 +434,6 @@ export default function VirtualizedSliceViewer({
 
       {/* Metadata and Controls */}
       <Stack direction="row" spacing={2} alignItems="flex-start">
-        {/* Height Map Legend */}
-        {showLegend && showHeightMap && (
-          <HeightMapLegend compact />
-        )}
-
         {/* Meniscus Visualization */}
         {showMeniscus && (
           <MeniscusVisualization width={200} height={150} />
@@ -485,10 +476,15 @@ export default function VirtualizedSliceViewer({
               size="small" 
               variant="outlined" 
             />
-            <Chip 
-              label={`Color Mode: ${convexMetadata.colorMode}`} 
-              size="small" 
-              variant="outlined" 
+            <Chip
+              label={`Color Mode: ${convexMetadata.colorMode}`}
+              size="small"
+              variant="outlined"
+            />
+            <Chip
+              label={`Pixels/mm: ${convexMetadata.pixelsPerMm}`}
+              size="small"
+              variant="outlined"
             />
           </Stack>
         </Paper>

@@ -52,7 +52,7 @@ export default function SlicingThumbnails() {
     <Box sx={{ position: 'fixed', top: 0, left: 64, right: 340, bottom: 0, p: 3, overflow: 'auto' }}>
       <SlicingErrorBoundary>
         {sliceCount > 50 ? (
-          <VirtualizedSliceViewer maxCacheSize={sliceCount} showMetadata={false} showLegend={false} showMeniscus={false} />
+          <VirtualizedSliceViewer maxCacheSize={sliceCount} showMetadata={false} showMeniscus={false} />
         ) : (
           <ConvexSliceViewer />
         )}

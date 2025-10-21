@@ -1,5 +1,4 @@
-
-"""Core slicing logic with gradient-colored output (interface/height mapped to RGB)."""
+"""Core slicing logic emitting binary (1-bit) exposure masks as 4K BMP frames."""
 
 from __future__ import annotations
 
@@ -7,7 +6,7 @@ import json
 import math
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Optional, Callable
+from typing import Callable, Iterable, Optional
 
 import numpy as np
 import trimesh
@@ -18,7 +17,9 @@ from .steady_state import SteadyPhaseProfile, compute_steady_phase_profile
 
 TARGET_WIDTH = 4096
 TARGET_HEIGHT = 2160
-TARGET_MODE = "RGB"  # changed from "L": we now emit 24‑bit color BMPs
+TARGET_MODE = "1"  # emit 1-bit monochrome BMPs
+PIXELS_PER_MM = 400
+DEFAULT_VOXEL_SIZE = 0.0000001
 
 
 @dataclass
@@ -32,7 +33,7 @@ class SlicingResult:
 
 
 class ConvexSlicer:
-    """Generate convex slices for an STL model with gradient colors."""
+    """Generate convex slices for an STL model as binary exposure masks."""
 
     def __init__(
         self,
@@ -44,7 +45,9 @@ class ConvexSlicer:
     ) -> None:
         self.params = params
         self.pitch = float(pitch)
-        self.voxel_size = float(voxel_size) if voxel_size is not None else float(pitch)
+        self.voxel_size = (
+            float(voxel_size) if voxel_size is not None else DEFAULT_VOXEL_SIZE
+        )
         self.profile = profile or compute_steady_phase_profile(params)
 
     def slice(
@@ -56,13 +59,13 @@ class ConvexSlicer:
         output_format: str = "bmp",
         target_dimensions_mm: Optional[dict] = None,
     ) -> SlicingResult:
-        """Slice the provided STL model and write image frames.
+        """Slice the provided STL model and write image frames."""
 
-        output_format: 'bmp' | 'png' | 'both'
-        """
+        fmt = (output_format or "bmp").lower()
+        if fmt not in {"bmp", "png", "both"}:
+            fmt = "bmp"
 
         mesh = self._load_mesh(stl_path)
-        # Optionally apply uniform scale to match target height/width/depth (mm)
         if target_dimensions_mm:
             mesh = self._scale_mesh_to_dimensions(mesh, target_dimensions_mm)
         mesh = self._prepare_mesh(mesh)
@@ -81,7 +84,9 @@ class ConvexSlicer:
             scale = 0.8 * model_height / self.profile.max_height
             surface_offsets *= scale
 
-        meniscus_peak = float(surface_offsets.max())  # how much higher the rim is than the center
+        meniscus_peak = float(
+            surface_offsets.max()
+        )  # how much higher the rim is than the center
         base_surface = self.params.rim_start_height + surface_offsets - meniscus_peak
 
         total_travel = model_height + meniscus_peak
@@ -90,12 +95,6 @@ class ConvexSlicer:
 
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
-
-        # Choose a global color scale so colors are comparable across frames.
-        # We encode the *absolute* interface height being printed at each (x,y).
-        vmin = float(base_surface.min())
-        vmax = float((base_surface + total_travel).max())
-        vspan = max(vmax - vmin, 1e-6)
 
         metadata = {
             "pitch": self.pitch,
@@ -107,11 +106,9 @@ class ConvexSlicer:
             "control_points": self.profile.control_points.tolist(),
             "image_width": TARGET_WIDTH,
             "image_height": TARGET_HEIGHT,
-            "bit_depth": 24,
+            "bit_depth": 1,
             "color_mode": TARGET_MODE,
-            "color_scale_min": vmin,
-            "color_scale_max": vmax,
-            "colormap": "viridis-like",
+            "pixels_per_mm": PIXELS_PER_MM,
         }
 
         if progress_cb is not None:
@@ -123,13 +120,9 @@ class ConvexSlicer:
         for frame in range(num_frames):
             lower = base_surface + frame * self.pitch
             upper = lower + self.pitch
-            height_map, mask = _slice_height_map(occupancy, z_coords, lower, upper)
-            # Normalise to [0, 1] using the global range
-            norm = np.clip((height_map - vmin) / vspan, 0.0, 1.0)
-            rgb = _apply_colormap(norm)
-            # Zero-out background
-            rgb[~mask] = 0
-            _save_rgb_frame(output_dir, frame, rgb, output_format=output_format)
+            _, mask = _slice_height_map(occupancy, z_coords, lower, upper)
+            bitmap = np.where(mask, 255, 0).astype(np.uint8)
+            _save_bitmap_frame(output_dir, frame, bitmap, self.voxel_size)
 
             if progress_cb is not None:
                 try:
@@ -167,21 +160,19 @@ class ConvexSlicer:
         mesh.apply_translation(translation)
         return mesh
 
-    def _scale_mesh_to_dimensions(self, mesh: trimesh.Trimesh, dims: dict) -> trimesh.Trimesh:
-        """Uniformly scale mesh so its (height or width/depth) matches requested mm.
+    def _scale_mesh_to_dimensions(
+        self, mesh: trimesh.Trimesh, dims: dict
+    ) -> trimesh.Trimesh:
+        """Uniformly scale mesh so its (height or width/depth) matches requested mm."""
 
-        We prefer matching height; if absent, try width; then depth. Units are mm.
-        """
         m = mesh.copy()
         bounds = m.bounds
         size = bounds[1] - bounds[0]
 
-        # current sizes
         cur_w = float(size[0])
         cur_d = float(size[1])
         cur_h = float(size[2])
 
-        # desired sizes
         des_h = float(dims.get("height")) if dims.get("height") else None
         des_w = float(dims.get("width")) if dims.get("width") else None
         des_d = float(dims.get("depth")) if dims.get("depth") else None
@@ -196,12 +187,13 @@ class ConvexSlicer:
         else:
             return m
 
-        # Apply uniform scale
         m.apply_scale(scale)
         return m
 
 
-def _axis_coordinates(transform: np.ndarray, shape: Iterable[int]) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def _axis_coordinates(
+    transform: np.ndarray, shape: Iterable[int]
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Compute coordinate arrays for the voxel grid axes."""
 
     shape = tuple(int(v) for v in shape)
@@ -223,15 +215,12 @@ def _slice_height_map(
     lower: np.ndarray,
     upper: np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Return (height_map, mask) for a slice band.
-    height_map contains the *maximum* z coordinate of occupied voxels within the band,
-    per (x, y). mask is True where the band intersects the model.
-    """
+    """Return (height_map, mask) for a slice band."""
+
     z_grid = z_coords[np.newaxis, np.newaxis, :]
     within = (z_grid >= lower[..., np.newaxis]) & (z_grid < upper[..., np.newaxis])
     hits = occupancy & within
 
-    # Use NaNs to compute per-(x,y) maxima only where we have hits
     with np.errstate(invalid="ignore"):
         z_vals = np.where(hits, z_grid, np.nan)
         height_map = np.nanmax(z_vals, axis=2)
@@ -241,82 +230,40 @@ def _slice_height_map(
     return height_map.astype(np.float32), mask
 
 
-# ---------- Color mapping utilities ----------
+def _save_bitmap_frame(
+    output_dir: Path, index: int, bitmap: np.ndarray, voxel_size: float
+) -> None:
+    """Write the binary frame as a 1-bit BMP image with 4K DCI resolution."""
 
-def _build_viridis_like_lut() -> np.ndarray:
-    """Construct a small viridis-like 256x3 LUT (uint8)."""
-    # Key color stops (t, r, g, b)
-    stops = np.array([
-        [0.00, 68,   1,  84],   # deep purple
-        [0.25, 59,  82, 139],   # indigo
-        [0.50, 33, 145, 140],   # teal
-        [0.75, 94, 201,  98],   # green
-        [1.00, 253, 231, 37],   # yellow
-    ], dtype=float)
-
-    lut = np.zeros((256, 3), dtype=np.uint8)
-    ts = stops[:, 0]
-    colors = stops[:, 1:4]
-    for i in range(256):
-        t = i / 255.0
-        j = np.searchsorted(ts, t, side="right") - 1
-        j = np.clip(j, 0, len(ts) - 2)
-        t0, t1 = ts[j], ts[j + 1]
-        c0, c1 = colors[j], colors[j + 1]
-        u = 0.0 if t1 == t0 else (t - t0) / (t1 - t0)
-        c = (1 - u) * c0 + u * c1
-        lut[i] = np.clip(np.round(c), 0, 255).astype(np.uint8)
-    return lut
-
-
-_VIRIDIS_LUT = _build_viridis_like_lut()
-
-
-def _apply_colormap(norm: np.ndarray) -> np.ndarray:
-    """Map a [0,1] float array to RGB using a viridis-like LUT."""
-    idx = np.clip((norm * 255.0).astype(np.uint8), 0, 255)
-    return _VIRIDIS_LUT[idx]
-
-
-# ---------- Rendering ----------
-
-def _save_rgb_frame(output_dir: Path, index: int, rgb: np.ndarray, *, output_format: str = "bmp") -> None:
-    """Write the RGB frame in requested format with 4K DCI resolution.
-
-    output_format: 'bmp' | 'png' | 'both'
-    """
-    from PIL import Image  # type: ignore
-
-    frame = _render_rgb(rgb)
-
-    # Force BMP only
+    frame = _render_bitmap(bitmap, voxel_size)
     frame.save(output_dir / f"frame_{index:04d}.bmp", format="BMP")
 
 
-def _render_rgb(rgb: np.ndarray) -> "Image.Image":
-    """Project the RGB array (H=W=voxel grid) onto the 4K target canvas.
+def _render_bitmap(bitmap: np.ndarray, voxel_size: float) -> "Image.Image":
+    """Project the binary array (H=W=voxel grid) onto the 4K target canvas."""
 
-    The orientation mirrors the previous grayscale pipeline: transpose then
-    flip vertically so on-screen matches the conventional top‑down view.
-    """
     from PIL import Image
 
-    # rgb is (X, Y, 3) – match legacy orientation
-    array = rgb.transpose(1, 0, 2)[::-1, :, :]
-    base_image = Image.fromarray(array, mode=TARGET_MODE)
+    array = bitmap.transpose(1, 0)[::-1, :]
+    base_image = Image.fromarray(array).convert("1", dither=Image.Dither.NONE)
 
-    if base_image.size == (TARGET_WIDTH, TARGET_HEIGHT):
-        return base_image
+    desired_width = max(1, int(round(base_image.width * voxel_size * PIXELS_PER_MM)))
+    desired_height = max(1, int(round(base_image.height * voxel_size * PIXELS_PER_MM)))
 
-    width_scale = TARGET_WIDTH / base_image.width if base_image.width else 1.0
-    height_scale = TARGET_HEIGHT / base_image.height if base_image.height else 1.0
-    scale = min(width_scale, height_scale)
-    scaled_width = max(1, min(TARGET_WIDTH, int(round(base_image.width * scale))))
-    scaled_height = max(1, min(TARGET_HEIGHT, int(round(base_image.height * scale))))
+    if desired_width > TARGET_WIDTH or desired_height > TARGET_HEIGHT:
+        raise ValueError(
+            "Model footprint exceeds the printable area at 400 px/mm resolution"
+        )
 
-    resized = base_image.resize((scaled_width, scaled_height), resample=Image.NEAREST)
-    canvas = Image.new(TARGET_MODE, (TARGET_WIDTH, TARGET_HEIGHT), color=(0, 0, 0))
-    left = (TARGET_WIDTH - scaled_width) // 2
-    top = (TARGET_HEIGHT - scaled_height) // 2
+    if (desired_width, desired_height) == base_image.size:
+        resized = base_image
+    else:
+        resized = base_image.resize(
+            (desired_width, desired_height), resample=Image.NEAREST
+        )
+
+    canvas = Image.new(TARGET_MODE, (TARGET_WIDTH, TARGET_HEIGHT), color=0)
+    left = (TARGET_WIDTH - desired_width) // 2
+    top = (TARGET_HEIGHT - desired_height) // 2
     canvas.paste(resized, (left, top))
     return canvas

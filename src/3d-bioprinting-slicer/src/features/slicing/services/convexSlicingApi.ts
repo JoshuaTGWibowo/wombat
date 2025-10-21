@@ -62,9 +62,7 @@ export async function postConvexSlice(body: ConvexSliceRequestBody, signal?: Abo
       imageHeight: m.image_height,
       bitDepth: m.bit_depth,
       colorMode: m.color_mode,
-      colorScaleMin: m.color_scale_min,
-      colorScaleMax: m.color_scale_max,
-      colormap: m.colormap,
+      pixelsPerMm: m.pixels_per_mm,
     } as any;
   }
   return data;
@@ -110,9 +108,7 @@ export async function getConvexSlicingResult(jobId: string): Promise<{ ready: bo
       imageHeight: m.image_height,
       bitDepth: m.bit_depth,
       colorMode: m.color_mode,
-      colorScaleMin: m.color_scale_min,
-      colorScaleMax: m.color_scale_max,
-      colormap: m.colormap,
+      pixelsPerMm: m.pixels_per_mm,
     } as any;
   }
   return data as any;

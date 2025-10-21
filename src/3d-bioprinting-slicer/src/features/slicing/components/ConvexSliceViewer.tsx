@@ -21,25 +21,21 @@ import {
   Info as InfoIcon,
 } from '@mui/icons-material';
 import { useAppSelector } from '../../../app/hooks';
-import HeightMapLegend from './HeightMapLegend';
 import MeniscusVisualization from './MeniscusVisualization';
 
 interface ConvexSliceViewerProps {
   onSliceSelect?: (index: number) => void;
   showMetadata?: boolean;
   showMeniscus?: boolean;
-  showLegend?: boolean;
 }
 
 export default function ConvexSliceViewer({
   onSliceSelect,
   showMetadata = true,
   showMeniscus = true,
-  showLegend = true,
 }: ConvexSliceViewerProps) {
   const slices = useAppSelector((state) => state.slicing.slices);
   const convexMetadata = useAppSelector((state) => state.slicing.convexMetadata);
-  const showHeightMap = useAppSelector((state) => state.slicing.showHeightMap);
   const slicingMode = useAppSelector((state) => state.slicing.slicingMode);
   const status = useAppSelector((state) => state.slicing.status);
 
@@ -225,11 +221,6 @@ export default function ConvexSliceViewer({
 
       {/* Metadata and Controls */}
       <Stack direction="row" spacing={2} alignItems="flex-start">
-        {/* Height Map Legend */}
-        {showLegend && showHeightMap && (
-          <HeightMapLegend compact />
-        )}
-
         {/* Meniscus Visualization */}
         {showMeniscus && (
           <MeniscusVisualization width={200} height={150} />
@@ -247,10 +238,10 @@ export default function ConvexSliceViewer({
           </Stack>
           
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            <Chip 
-              label={`Pitch: ${convexMetadata.pitch} mm`} 
-              size="small" 
-              variant="outlined" 
+            <Chip
+              label={`Pitch: ${convexMetadata.pitch} mm`}
+              size="small"
+              variant="outlined"
             />
             <Chip 
               label={`Voxel Size: ${convexMetadata.voxelSize} mm`} 
@@ -267,15 +258,20 @@ export default function ConvexSliceViewer({
               size="small" 
               variant="outlined" 
             />
-            <Chip 
-              label={`Bit Depth: ${convexMetadata.bitDepth}`} 
-              size="small" 
-              variant="outlined" 
+            <Chip
+              label={`Bit Depth: ${convexMetadata.bitDepth}`}
+              size="small"
+              variant="outlined"
             />
-            <Chip 
-              label={`Color Mode: ${convexMetadata.colorMode}`} 
-              size="small" 
-              variant="outlined" 
+            <Chip
+              label={`Color Mode: ${convexMetadata.colorMode}`}
+              size="small"
+              variant="outlined"
+            />
+            <Chip
+              label={`Pixels/mm: ${convexMetadata.pixelsPerMm}`}
+              size="small"
+              variant="outlined"
             />
           </Stack>
         </Paper>
