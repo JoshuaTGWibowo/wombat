@@ -27,9 +27,7 @@ export interface ConvexSlicingMetadata {
   imageHeight: number;
   bitDepth: number;
   colorMode: string;
-  colorScaleMin: number;
-  colorScaleMax: number;
-  colormap: string;
+  pixelsPerMm: number;
 }
 
 export interface SlicingState {
@@ -44,7 +42,6 @@ export interface SlicingState {
   physicsParams: ConvexPhysicsParams;
   convexMetadata?: ConvexSlicingMetadata;
   outputFormat: 'bmp';
-  showHeightMap: boolean;
   abortController?: AbortController;
   progress?: number;
   jobId?: string;
@@ -72,7 +69,6 @@ const initialState: SlicingState = {
   physicsParams: defaultPhysicsParams,
   convexMetadata: undefined,
   outputFormat: 'bmp',
-  showHeightMap: false,
   abortController: undefined,
   progress: undefined,
   jobId: undefined,
@@ -133,9 +129,6 @@ const slicingSlice = createSlice({
     setOutputFormat(state, action: PayloadAction<'bmp' | 'png' | 'both'>) {
       state.outputFormat = action.payload;
     },
-    toggleHeightMap(state) {
-      state.showHeightMap = !state.showHeightMap;
-    },
     setConvexMetadata(state, action: PayloadAction<ConvexSlicingMetadata>) {
       state.convexMetadata = action.payload;
     },
@@ -164,7 +157,6 @@ export const {
   setPhysicsParams,
   resetPhysicsParams,
   setOutputFormat,
-  toggleHeightMap,
   setConvexMetadata,
   cancelRequested,
   setProgress,

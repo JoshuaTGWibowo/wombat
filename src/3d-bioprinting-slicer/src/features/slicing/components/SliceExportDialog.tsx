@@ -35,7 +35,6 @@ interface ExportOptions {
   format: 'png' | 'bmp' | 'jpg' | 'tiff';
   quality: number;
   includeMetadata: boolean;
-  includeHeightMap: boolean;
   includeMeniscusData: boolean;
   compression: 'none' | 'zip' | 'tar';
   naming: 'sequential' | 'timestamp' | 'custom';
@@ -46,7 +45,6 @@ const defaultExportOptions: ExportOptions = {
   format: 'png',
   quality: 95,
   includeMetadata: true,
-  includeHeightMap: true,
   includeMeniscusData: true,
   compression: 'zip',
   naming: 'sequential',
@@ -253,13 +251,6 @@ export default function SliceExportDialog({ open, onClose }: SliceExportDialogPr
                 color={exportOptions.includeMetadata ? 'primary' : 'default'}
                 onClick={() => handleOptionChange('includeMetadata', !exportOptions.includeMetadata)}
                 variant={exportOptions.includeMetadata ? 'filled' : 'outlined'}
-              />
-              <Chip
-                label="Height Map Data"
-                size="small"
-                color={exportOptions.includeHeightMap ? 'primary' : 'default'}
-                onClick={() => handleOptionChange('includeHeightMap', !exportOptions.includeHeightMap)}
-                variant={exportOptions.includeHeightMap ? 'filled' : 'outlined'}
               />
               <Chip
                 label="Meniscus Data"
