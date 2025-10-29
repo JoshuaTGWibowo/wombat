@@ -1,5 +1,5 @@
 @echo off
-setlocal
+setlocal EnableExtensions EnableDelayedExpansion
 
 REM Determine repository root relative to this script
 set "REPO_ROOT=%~dp0"
@@ -20,9 +20,10 @@ if not exist "%FRONTEND_DIR%" (
     exit /b 1
 )
 
+echo [INFO] Backend directory: %BACKEND_DIR%
 echo [INFO] Launching Convex Slicing API server window...
 start "Convex Slicing API" cmd /k ^
-    "pushd ""%BACKEND_DIR%"" ^&^& ^
+    "pushd ^"%BACKEND_DIR%^" ^&^& ^
     if not exist .venv\Scripts\python.exe ( ^
         echo Creating Python virtual environment... ^&^& ^
         python -m venv .venv ^
@@ -33,9 +34,10 @@ start "Convex Slicing API" cmd /k ^
     pip install python-multipart uvicorn fastapi ^&^& ^
     uvicorn api:app --reload --host 0.0.0.0 --port 8000"
 
+echo [INFO] Frontend directory: %FRONTEND_DIR%
 echo [INFO] Launching frontend dev server window...
 start "3D Bioprinting Frontend" cmd /k ^
-    "pushd ""%FRONTEND_DIR%"" ^&^& ^
+    "pushd ^"%FRONTEND_DIR%^" ^&^& ^
     if not exist .env.local ( ^
         echo Creating default .env.local... ^&^& ^
         echo BACKEND_URL=http://localhost:8000>.env.local ^&^& ^
