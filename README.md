@@ -8,24 +8,107 @@ An application for scientists to import 3D CAD models, convert them into 2D slic
 - **Plan Layouts** inside a virtual well plate, assign metadata, and validate placement visually.
 - **Export Scripts** that translate validated setups into executable printer instructions.
 
-## Getting Started
+## Quick Start (beginner friendly)
+
+Follow these steps carefully. You will run the backend (Python) and the frontend (website) at the same time in two terminals/windows.
+
+### 0) Prerequisites (install only once)
+
+* Python 3.10+ installed
+  - macOS: Python is usually installed. If not, install via Homebrew: `brew install python`
+  - Windows: Download from `https://www.python.org/downloads/` and check “Add python.exe to PATH” during install
+* Node.js 18+ and npm installed
+  - macOS: `brew install node`
+  - Windows: Download LTS from `https://nodejs.org`
+* Git installed (optional, only if you need to pull updates)
+
+Tip: To check versions, run: `python3 --version`, `node --version`, `npm --version`.
+
+### 1) Start the Backend (FastAPI)
+
+This prepares the Python environment and starts the server that does the slicing work.
+
+macOS/Linux:
 
 ```bash
-# Frontend
-cd src/3d-bioprinting-slicer
-npm install
-npm run dev
-
-# Backend (convex slicer API)
-cd src/convex-slicing
+cd src/3d-bioprinting-slicer/src/convex-slicing
+python3 -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip
 pip install -r requirements.txt
-uvicorn app.main:app --reload
+pip install python-multipart
+pip install uvicorn
+pip install fastapi
+uvicorn api:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Configure the frontend API target via `src/3d-bioprinting-slicer/.env.local`:
+Windows (PowerShell):
+
+```powershell
+cd src/3d-bioprinting-slicer/src/convex-slicing
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install --upgrade pip
+pip install -r requirements.txt
+pip install python-multipart
+pip install uvicorn
+pip install fastapi
+uvicorn api:app --reload --host 0.0.0.0 --port 8000
+```
+
+You should see server logs and “Uvicorn running on http://0.0.0.0:8000”. Leave this terminal running.
+
+Verify backend (optional):
+
+* Open `http://localhost:8000/slice/convex/parameters/default` in your browser. You should see JSON.
+* Or in a terminal: `curl http://localhost:8000/slice/convex/parameters/default`.
+
+### 2) Start the Frontend (Vite dev server)
+
+Open a new terminal/window (keep the backend running in the first one).
+
+macOS/Linux:
+
+```bash
+cd src/3d-bioprinting-slicer
+echo "BACKEND_URL=http://localhost:8000" > .env.local
+echo "VITE_CLERK_PUBLISHABLE_KEY=pk_test_Z3Jvd2luZy1wb2xsaXdvZy04Ni5jbGVyay5hY2NvdW50cy5kZXYk" >> .env.local
+npm ci
+npm run dev
+```
+
+Windows (PowerShell):
+
+```powershell
+cd src/3d-bioprinting-slicer
+Set-Content -Path .env.local -Value "BACKEND_URL=http://localhost:8000`nVITE_CLERK_PUBLISHABLE_KEY=pk_test_Z3Jvd2luZy1wb2xsaXdvZy04Ni5jbGVyay5hY2NvdW50cy5kZXYk"
+npm ci
+npm run dev
+```
+
+When it starts, it will print a local URL (usually `http://localhost:5173`). Click it or paste it into your browser.
+
+If port 5173 is busy, use: `npm run dev -- --port 5174` and open `http://localhost:5174`.
+
+Additionally, ensure your `src/3d-bioprinting-slicer/.env.local` includes:
 
 ```
-VITE_API_BASE_URL="http://localhost:8000/api"
+BACKEND_URL=http://localhost:8000
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_Z3Jvd2luZy1wb2xsaXdvZy04Ni5jbGVyay5hY2NvdW50cy5kZXYk
+```
+
+### 3) Optional helpers
+
+On Windows you can automate the full stack startup with the included batch helper:
+
+```bat
+start-wombat.bat
+```
+
+On macOS the `start-wombat-macos.command` script launches the backend, frontend, and opens the browser automatically. You can double-click it from Finder or run it from a terminal:
+
+```bash
+./start-wombat-macos.command
 ```
 
 ## Documentation Map
