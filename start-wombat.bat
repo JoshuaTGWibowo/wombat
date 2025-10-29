@@ -22,7 +22,7 @@ if not exist "%FRONTEND_DIR%" (
 
 echo [INFO] Launching Convex Slicing API server window...
 start "Convex Slicing API" cmd /k ^
-    "cd /d \"%BACKEND_DIR%\" ^&^& ^
+    "pushd ""%BACKEND_DIR%"" ^&^& ^
     if not exist .venv\Scripts\python.exe ( ^
         echo Creating Python virtual environment... ^&^& ^
         python -m venv .venv ^
@@ -35,11 +35,11 @@ start "Convex Slicing API" cmd /k ^
 
 echo [INFO] Launching frontend dev server window...
 start "3D Bioprinting Frontend" cmd /k ^
-    "cd /d \"%FRONTEND_DIR%\" ^&^& ^
+    "pushd ""%FRONTEND_DIR%"" ^&^& ^
     if not exist .env.local ( ^
         echo Creating default .env.local... ^&^& ^
-        echo BACKEND_URL=http://localhost:8000> .env.local ^&^& ^
-        echo VITE_CLERK_PUBLISHABLE_KEY=pk_test_Z3Jvd2luZy1wb2xsaXdvZy04Ni5jbGVyay5hY2NvdW50cy5kZXYk>> .env.local ^
+        echo BACKEND_URL=http://localhost:8000>.env.local ^&^& ^
+        echo VITE_CLERK_PUBLISHABLE_KEY=pk_test_Z3Jvd2luZy1wb2xsaXdvZy04Ni5jbGVyay5hY2NvdW50cy5kZXYk>>.env.local ^
     ) ^&^& ^
     if exist package-lock.json (npm ci) else (npm install) ^&^& ^
     npm run dev"
