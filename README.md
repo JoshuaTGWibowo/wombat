@@ -16,6 +16,12 @@ Run the combined dev stack with the helper script (it installs dependencies as n
 ./scripts/dev.sh
 ```
 
+Need to troubleshoot? The script streams backend output to `.dev_backend.log`, and you can enable verbose shell tracing with:
+
+```bash
+DEBUG=1 ./scripts/dev.sh
+```
+
 Optionally, configure the frontend API target via `src/3d-bioprinting-slicer/.env.local` before launching:
 
 ```
