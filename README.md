@@ -10,6 +10,26 @@ An application for scientists to import 3D CAD models, convert them into 2D slic
 
 ## Getting Started
 
+Run the combined dev stack with the helper script (it installs dependencies as needed):
+
+```bash
+./scripts/dev.sh
+```
+
+Need to troubleshoot? The script streams backend output to `.dev_backend.log`, and you can enable verbose shell tracing with:
+
+```bash
+DEBUG=1 ./scripts/dev.sh
+```
+
+Optionally, configure the frontend API target via `src/3d-bioprinting-slicer/.env.local` before launching:
+
+```
+VITE_API_BASE_URL="http://localhost:8000/api"
+```
+
+If you prefer to manage services manually, the individual commands are still available:
+
 ```bash
 # Frontend
 cd src/3d-bioprinting-slicer
@@ -20,12 +40,6 @@ npm run dev
 cd src/convex-slicing
 pip install -r requirements.txt
 uvicorn app.main:app --reload
-```
-
-Configure the frontend API target via `src/3d-bioprinting-slicer/.env.local`:
-
-```
-VITE_API_BASE_URL="http://localhost:8000/api"
 ```
 
 ## Documentation Map
